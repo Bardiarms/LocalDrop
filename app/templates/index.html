@@ -1,0 +1,30 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LocalDrop</title>
+</head>
+{% if error %}
+    <p style="color: red;">{{ error }}</p>
+{% endif %}
+
+<body>
+    <h1>LocalDrop</h1>
+
+    <p>A local-network file transfer platform.</p>
+
+    <hr>
+
+    <h2>Create Room</h2>
+    <form action="/rooms" method="post">
+        <input type="text" name="room_name" placeholder="Room name" required>
+        <button type="submit">Create</button>
+    </form>
+
+    <h2>Join Room</h2>
+    <form action="/rooms/join" method="post">
+        <input type="text" name="room_code" placeholder="Room code" required>
+        <button type="submit">Join</button>
+    </form>
+</body>
+</html>
