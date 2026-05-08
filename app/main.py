@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Form, UploadFile, File
-from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.responses import RedirectResponse, FileResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 import random
 from pathlib import Path
@@ -8,6 +8,9 @@ import uuid
 import re
 from app.database import init_db, get_connection
 from datetime import datetime
+import socket
+import qrcode
+from io import BytesIO
 
 
 app = FastAPI()
@@ -75,11 +78,46 @@ def get_file(file_id: str, room_code: str):
     return file
 
 
+def get_local_ip():
+    try:
+        socket_connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        socket_connection.connect(("8.8.8.8", 80))
+        local_ip = socket_connection.getsockname()[0]
+        socket_connection.close()
+        return local_ip
+    except Exception:
+        return "127.0.0.1"
+    
+
+def get_server_url():
+    local_ip = get_local_ip()
+    return f"http://{local_ip}:8000"
+
+
 @app.get("/")
 def home(request: Request):
+    server_url = get_server_url()
+    
     return templates.TemplateResponse(
        name="index.html",
-       request=request
+       request=request,
+       context={
+           "server_url": server_url
+       }
+    )
+
+@app.get("/qr")
+def qr_code():
+    server_url = get_server_url()
+    
+    qr_image = qrcode.make(server_url)
+    image_buffer = BytesIO()
+    qr_image.save(image_buffer, format="PNG")
+    image_buffer.seek(0)
+    
+    return StreamingResponse(
+        image_buffer,
+        media_type="image/png"
     )
     
 @app.post("/rooms")
