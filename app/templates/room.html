@@ -24,15 +24,15 @@
 
     {% if files %}
         <ul>
-            {% for file_id, file in files.items() %}
+            {% for file in files%}
                 <li>
                     {{ file.original_name }}
 
-                    <a href="/api/rooms/{{ room_code }}/files/{{ file_id }}/download">
+                    <a href="/api/rooms/{{ room_code }}/files/{{ file.id }}/download">
                         Download
                     </a>
 
-                    <form action="/api/rooms/{{ room_code }}/files/{{ file_id }}/delete" method="post" style="display: inline;">
+                    <form action="/api/rooms/{{ room_code }}/files/{{ file.id }}/delete" method="post" style="display: inline;">
                         <button type="submit">Delete</button>
                     </form>
                 </li>

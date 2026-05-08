@@ -6,14 +6,16 @@ from pathlib import Path
 import shutil
 import uuid
 import re
+from app.database import init_db, get_connection
+from datetime import datetime
+
 
 app = FastAPI()
 
+init_db()
+
 templates = Jinja2Templates(directory="app/templates")
 
-rooms = {}
-
-files = {}
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -30,6 +32,49 @@ def sanitize_filename(filename: str)-> str:
     
     return filename
 
+def get_room(room_code: str):
+    connection = get_connection()
+    cursor = connection.cursor()
+    
+    cursor.execute(
+         "SELECT * FROM rooms WHERE code = ?",
+        (room_code,)
+    )
+    
+    room = cursor.fetchone()
+    connection.close()
+    
+    return room
+
+def get_room_files(room_code: str):
+    connection = get_connection()
+    cursor = connection.cursor()
+    
+    cursor.execute(
+        "SELECT * FROM files WHERE room_code = ? ORDER BY uploaded_at DESC",
+        (room_code,)
+    )
+    
+    rows = cursor.fetchall()
+    connection.close()
+    
+    return rows
+
+def get_file(file_id: str, room_code: str):
+    connection = get_connection()
+    cursor = connection.cursor()
+    
+    cursor.execute(
+         "SELECT * FROM files WHERE id = ? AND room_code = ?",
+        (file_id, room_code)
+    )
+    
+    file = cursor.fetchone()
+    connection.close()
+    
+    return file
+
+
 @app.get("/")
 def home(request: Request):
     return templates.TemplateResponse(
@@ -41,25 +86,41 @@ def home(request: Request):
 def create_room(room_name: str = Form(...)):
     room_code = generate_room_code()
 
-    while room_code in rooms:
+    while get_room(room_code) is not None:
         room_code = generate_room_code()
+        
+    connection = get_connection()
+    cursor = connection.cursor()
     
-    rooms[room_code] = {
-        "name": room_name
-    }
+    cursor.execute(
+          """
+        INSERT INTO rooms (code, name, created_at)
+        VALUES (?, ?, ?)
+        """,
+        (
+            room_code,
+            room_name,
+            datetime.now().isoformat(timespec="seconds")
+        )
+    )
     
-    files[room_code] = {}
+    connection.commit()
+    connection.close()
+    
+    room_upload_dir = UPLOAD_DIR / room_code
+    room_upload_dir.mkdir(exist_ok=True)
     
     return RedirectResponse(
         url=f"/rooms/{room_code}",
         status_code=303
     )
     
+    
 @app.post("/rooms/join")
 def join_room(request: Request, room_code: str = Form(...)):
     room_code = room_code.strip()
     
-    if room_code not in rooms:
+    if get_room(room_code) is None:
         return templates.TemplateResponse(
             name="index.html",
             request=request,
@@ -76,7 +137,9 @@ def join_room(request: Request, room_code: str = Form(...)):
     
 @app.get("/rooms/{room_code}")
 def room_page(request: Request, room_code: str):
-    if room_code not in rooms:
+    room = get_room(room_code)
+    
+    if room is None:
         return templates.TemplateResponse(
             name="index.html",
             request=request,
@@ -84,9 +147,8 @@ def room_page(request: Request, room_code: str):
                 "error": "Room not found"
             }
         )
-    room = rooms[room_code]
-    
-    room_files = files.get(room_code, {})
+        
+    room_files = get_room_files(room_code)
     
     return templates.TemplateResponse(
         name="room.html",
@@ -101,7 +163,7 @@ def room_page(request: Request, room_code: str):
     
 @app.post("/api/rooms/{room_code}/files")
 def upload_file(room_code: str, uploaded_file: UploadFile = File(...)):
-    if room_code not in rooms:
+    if get_room(room_code) is None:
         return {"error": "Room not found"}
     
     room_upload_dir = UPLOAD_DIR / room_code
@@ -118,13 +180,25 @@ def upload_file(room_code: str, uploaded_file: UploadFile = File(...)):
     with file_path.open("wb") as buffer:
         shutil.copyfileobj(uploaded_file.file, buffer)
         
-    if room_code not in files:
-        files[room_code] = {}
-        
-    files[room_code][file_id] = {
-        "original_name": original_name,
-        "stored_name": stored_name
-    }
+    connection = get_connection()
+    cursor = connection.cursor()
+    
+    cursor.execute(
+        """
+        INSERT INTO files (id, room_code, original_name, stored_name, uploaded_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            file_id,
+            room_code,
+            original_name,
+            stored_name,
+            datetime.now().isoformat(timespec="seconds")
+        )
+    )
+    
+    connection.commit()
+    connection.close()
     
     return RedirectResponse(
         url=f"/rooms/{room_code}",
@@ -135,15 +209,14 @@ def upload_file(room_code: str, uploaded_file: UploadFile = File(...)):
     
 @app.get("/api/rooms/{room_code}/files/{file_id}/download")
 def download_file(room_code: str, file_id: str):
-    if room_code not in rooms:
+    if get_room(room_code) is None:
         return {"error": "Room not found"}
 
-    room_files = files.get(room_code, {})
+    file_info = get_file(file_id, room_code)
 
-    if file_id not in room_files:
+    if file_info is None:
         return {"error": "File not found"}
 
-    file_info = room_files[file_id]
     file_path = UPLOAD_DIR / room_code / file_info["stored_name"]
 
     if not file_path.exists() or not file_path.is_file():
@@ -157,24 +230,32 @@ def download_file(room_code: str, file_id: str):
     
 @app.post("/api/rooms/{room_code}/files/{file_id}/delete")
 def delete_file(room_code: str, file_id: str):
-    if room_code not in rooms:
+    if get_room(room_code) is None:
         return {"error": "Room not found"}
 
-    room_files = files.get(room_code, {})
+    file_info = get_file(file_id, room_code)
 
-    if file_id not in room_files:
+    if file_info is None:
         return RedirectResponse(
             url=f"/rooms/{room_code}",
             status_code=303
         )
 
-    file_info = room_files[file_id]
     file_path = UPLOAD_DIR / room_code / file_info["stored_name"]
 
     if file_path.exists() and file_path.is_file():
         file_path.unlink()
 
-    del room_files[file_id]
+    connection = get_connection()
+    cursor = connection.cursor()
+    
+    cursor.execute(
+        "DELETE FROM files WHERE id = ? AND room_code = ?",
+        (file_id, room_code)
+    )
+    
+    connection.commit()
+    connection.close()
 
     return RedirectResponse(
         url=f"/rooms/{room_code}",
