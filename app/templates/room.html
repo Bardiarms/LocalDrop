@@ -42,6 +42,14 @@
         <p>No files uploaded yet.</p>
     {% endif %}
 
+   <hr>
+
+    <h2>Room Management</h2>
+
+    <form action="/rooms/{{ room_code }}/close" method="post">
+        <button type="submit">Close Room</button>
+    </form>
+
     <hr>
 
     <a href="/">Back to home</a>

@@ -261,3 +261,34 @@ def delete_file(room_code: str, file_id: str):
         url=f"/rooms/{room_code}",
         status_code=303
     )
+
+@app.post("/rooms/{room_code}/close")
+def close_room(room_code: str):
+    room = get_room(room_code)
+    
+    if room is None:
+        return RedirectResponse(
+            url="/",
+            status_code=303
+        )
+        
+    room_upload_dir = UPLOAD_DIR / room_code
+    
+    connection = get_connection()
+    cursor = connection.cursor()
+    
+    cursor.execute(
+        "DELETE FROM files WHERE room_code = ?",
+        (room_code,)
+    )
+    
+    connection.commit()
+    connection.close()
+    
+    if room_upload_dir.exists() and room_upload_dir.is_dir():
+        shutil.rmtree(room_upload_dir)
+        
+    return RedirectResponse(
+        url="/",
+        status_code=303
+    )
