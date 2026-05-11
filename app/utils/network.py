@@ -12,6 +12,9 @@ def get_local_ip() -> str:
         return "127.0.0.1"
 
 
-def get_server_url() -> str:
+def get_server_url()-> str:
     local_ip = get_local_ip()
     return f"http://{local_ip}:8000"
+
+def get_room_url(room_code: str)-> str:
+    return f"http://{get_server_url()}/rooms/{room_code}"

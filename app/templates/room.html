@@ -11,6 +11,14 @@
 
     <hr>
 
+    <h2>Invite another device</h2>
+
+    <p>Scan this QR code to join this room directly:</p>
+
+    <img src="/qr/rooms/{{ room_code }}" alt="QR code for this room" width="150">
+
+    <hr>
+
     <h2>Upload File</h2>
 
     <form id="upload-form" action="/api/rooms/{{ room_code }}/files" method="post" enctype="multipart/form-data">
