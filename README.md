@@ -8,12 +8,14 @@ I developed this project for my own personal file-transfer tasks in addition to 
 
 - Create and join transfer rooms
 - Upload files to a room
+- Show upload and download progress
 - List uploaded files
 - Download files from another device
 - Delete individual files
 - Close a room and clean up its files
 - SQLite-based metadata storage
 - QR code generation for easier connection
+- Room-specific QR codes for direct room access
 - Works over a local network
 
 ## Tech Stack
@@ -22,6 +24,7 @@ I developed this project for my own personal file-transfer tasks in addition to 
 - FastAPI
 - SQLite
 - Jinja2 templates
+- JavaScript
 - qrcode
 
 ## Running the Project
@@ -33,16 +36,18 @@ python -m venv env
 source env/bin/activate
 ```
 
-Install dependencies:
+Install the project in editable mode:
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
+
+This installs LocalDrop as a local command-line tool.
 
 Run the server:
 
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+localdrop
 ```
 
 Then open the app on your computer:
@@ -53,7 +58,31 @@ http://127.0.0.1:8000
 
 Other devices on the same network can connect using the displayed local network address or QR code.
 
+## Development Mode
+
+If you are actively editing the code and want automatic reloads, you can run the app with Uvicorn directly:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+## Project Packaging
+
+LocalDrop includes a `pyproject.toml` file so it can be installed locally using:
+
+```bash
+pip install -e .
+```
+
+The command-line entry point is configured as:
+
+```text
+localdrop
+```
+
+So after installation, the server can be started with it.
+
+
 ## Important Note
 
-This project is intended for trusted local networks and personal use. The current version is not safe to be exposed directly to the public internet.(Maybe in the future more secure transfer protocols will be added.)
-
+This project is intended for trusted local networks and personal use. The current version is not safe to be exposed directly to the public internet. Maybe in the future, more secure transfer protocols will be added.

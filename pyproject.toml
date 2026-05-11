@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "localdrop"
+version = "0.1.0"
+description = "A local-network file transfer web app built with FastAPI."
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "jinja2",
+    "python-multipart",
+    "qrcode"
+]
+
+[project.scripts]
+localdrop = "app.cli:main"
+
+[tool.setuptools]
+packages = ["app", "app.routes", "app.services", "app.utils"]
+
+[tool.setuptools.package-data]
+app = [
+    "templates/*.html",
+    "static/*.js",
+    "static/*.css"
+]

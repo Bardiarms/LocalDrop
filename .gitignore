@@ -1,6 +1,7 @@
 /env
 app/__pycache__
-/uploades
+uploades/
 /localdrop.db
 *.pyc
 .DS_Store
+localdrop.egg-info/
